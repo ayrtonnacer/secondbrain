@@ -1,3 +1,11 @@
+/* Reset y estilos base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
 body { 
     margin: 0; 
     background: #e9e9e9;
@@ -5,42 +13,75 @@ body {
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    touch-action: none;
 }
 
+/* Estilos del canvas */
 canvas { 
-    display: block; 
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    touch-action: none;
 }
 
+/* Título/Info */
 #info {
     position: absolute;
     top: 10px;
     left: 10px;
-    color: #181818;
-    background: #ffffff;
-    padding: 10px;
+    color: #ffffff;
+    background: #333333;
+    padding: 10px 15px;
     border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     z-index: 100;
+    font-size: 14px;
     user-select: none;
+    transition: all 0.3s ease;
 }
 
-/* Estilos responsivos */
+/* Media Queries */
 @media (max-width: 768px) {
     #info {
-        font-size: 14px;
-        padding: 8px;
+        font-size: 12px;
+        padding: 8px 12px;
     }
 }
 
 @media (max-width: 480px) {
     #info {
-        font-size: 12px;
-        padding: 6px;
+        font-size: 11px;
+        padding: 6px 10px;
     }
+}
+
+/* Prevenir comportamientos por defecto en móviles */
+html, body {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    -webkit-overflow-scrolling: none;
+    overscroll-behavior: none;
 }
 
 /* Optimizaciones de rendimiento */
 * {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
 }

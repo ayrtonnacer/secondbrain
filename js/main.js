@@ -14,6 +14,11 @@ const images = [
     }
 ];
 
+// Variables para control táctil
+let touchStartX = 0;
+let touchStartY = 0;
+let isTouching = false;
+
 // Configuración básica de Three.js
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#e9e9e9');
@@ -97,7 +102,40 @@ document.addEventListener('mouseup', () => {
     mouseDown = false;
 });
 
-// Función para manejar clics
+// Eventos táctiles
+document.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    isTouching = true;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isDragging = false;
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+    if (!isTouching) return;
+
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    
+    const deltaX = touchX - touchStartX;
+    const deltaY = touchY - touchStartY;
+
+    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+        isDragging = true;
+    }
+
+    targetRotationY += deltaX * 0.01;
+    targetRotationX += deltaY * 0.01;
+
+    touchStartX = touchX;
+    touchStartY = touchY;
+}, { passive: false });
+
+document.addEventListener('touchend', () => {
+    isTouching = false;
+});
+
+// Función para manejar clics y toques
 function onDocumentMouseClick(event) {
     if (isDragging) {
         isDragging = false;
@@ -106,8 +144,12 @@ function onDocumentMouseClick(event) {
 
     event.preventDefault();
     
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+    // Obtener coordenadas correctas para mouse o touch
+    const x = event.clientX || (event.touches && event.touches[0].clientX);
+    const y = event.clientY || (event.touches && event.touches[0].clientY);
+    
+    mouse.x = (x / window.innerWidth) * 2 - 1;
+    mouse.y = - (y / window.innerHeight) * 2 + 1;
     
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(planes);
@@ -121,14 +163,45 @@ function onDocumentMouseClick(event) {
 }
 
 document.addEventListener('click', onDocumentMouseClick);
+document.addEventListener('touchend', onDocumentMouseClick);
 
-// Zoom con la rueda del mouse
+// Zoom con la rueda del mouse y gestos pinch
+let initialPinchDistance = null;
+
+document.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+        initialPinchDistance = getPinchDistance(e);
+    }
+}, { passive: false });
+
+document.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && initialPinchDistance !== null) {
+        const currentDistance = getPinchDistance(e);
+        const delta = initialPinchDistance - currentDistance;
+        camera.position.z += delta * 0.01;
+        camera.position.z = Math.max(5, Math.min(20, camera.position.z));
+        initialPinchDistance = currentDistance;
+    }
+}, { passive: false });
+
+document.addEventListener('touchend', () => {
+    initialPinchDistance = null;
+});
+
+// Función auxiliar para calcular la distancia del pinch
+function getPinchDistance(e) {
+    return Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+    );
+}
+
 document.addEventListener('wheel', (e) => {
     camera.position.z += e.deltaY * 0.01;
     camera.position.z = Math.max(5, Math.min(20, camera.position.z));
 });
 
-// Reset con doble click
+// Reset con doble click y doble toque
 document.addEventListener('dblclick', () => {
     targetRotationX = 0;
     targetRotationY = 0;
