@@ -25,6 +25,7 @@ scene.background = new THREE.Color('#e9e9e9');
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio); // Mejora la nitidez en dispositivos móviles
 document.body.appendChild(renderer.domElement);
 
 // Variables para el Raycaster
@@ -33,7 +34,8 @@ const mouse = new THREE.Vector2();
 
 // Función para generar posiciones aleatorias
 function getRandomPosition() {
-    const spread = 8;
+    // Ajustar spread según el tamaño de la pantalla
+    const spread = window.innerWidth < 768 ? 6 : 8;
     return {
         x: (Math.random() - 0.5) * spread,
         y: (Math.random() - 0.5) * spread,
@@ -45,6 +47,7 @@ function getRandomPosition() {
 const planes = images.map((image) => {
     const geometry = new THREE.PlaneGeometry(2, 2);
     const texture = new THREE.TextureLoader().load(image.url);
+    texture.minFilter = THREE.LinearFilter; // Mejora la calidad en móviles
     const material = new THREE.MeshBasicMaterial({ 
         map: texture,
         side: THREE.DoubleSide,
@@ -61,7 +64,7 @@ const planes = images.map((image) => {
 });
 
 // Posicionar cámara
-camera.position.z = 12;
+camera.position.z = window.innerWidth < 768 ? 15 : 12;
 
 // Variables para el control
 let mouseDown = false;
@@ -72,6 +75,11 @@ let targetRotationY = 0;
 let currentRotationX = 0;
 let currentRotationY = 0;
 let isDragging = false;
+
+// Factor de sensibilidad según el dispositivo
+const getSensitivityFactor = () => {
+    return window.innerWidth < 768 ? 0.005 : 0.01;
+};
 
 // Eventos del mouse
 document.addEventListener('mousedown', (e) => {
@@ -90,8 +98,9 @@ document.addEventListener('mousemove', (e) => {
             isDragging = true;
         }
         
-        targetRotationY += deltaX * 0.01;
-        targetRotationX += deltaY * 0.01;
+        const sensitivityFactor = getSensitivityFactor();
+        targetRotationY += deltaX * sensitivityFactor;
+        targetRotationX += deltaY * sensitivityFactor;
         
         mouseX = e.clientX;
         mouseY = e.clientY;
@@ -113,6 +122,7 @@ document.addEventListener('touchstart', (e) => {
 
 document.addEventListener('touchmove', (e) => {
     if (!isTouching) return;
+    e.preventDefault();
 
     const touchX = e.touches[0].clientX;
     const touchY = e.touches[0].clientY;
@@ -124,16 +134,18 @@ document.addEventListener('touchmove', (e) => {
         isDragging = true;
     }
 
-    targetRotationY += deltaX * 0.01;
-    targetRotationX += deltaY * 0.01;
+    const sensitivityFactor = getSensitivityFactor();
+    targetRotationY += deltaX * sensitivityFactor;
+    targetRotationX += deltaY * sensitivityFactor;
 
     touchStartX = touchX;
     touchStartY = touchY;
 }, { passive: false });
 
-document.addEventListener('touchend', () => {
+document.addEventListener('touchend', (e) => {
+    e.preventDefault();
     isTouching = false;
-});
+}, { passive: false });
 
 // Función para manejar clics y toques
 function onDocumentMouseClick(event) {
@@ -144,7 +156,6 @@ function onDocumentMouseClick(event) {
 
     event.preventDefault();
     
-    // Obtener coordenadas correctas para mouse o touch
     const x = event.clientX || (event.touches && event.touches[0].clientX);
     const y = event.clientY || (event.touches && event.touches[0].clientY);
     
@@ -170,15 +181,18 @@ let initialPinchDistance = null;
 
 document.addEventListener('touchstart', (e) => {
     if (e.touches.length === 2) {
+        e.preventDefault();
         initialPinchDistance = getPinchDistance(e);
     }
 }, { passive: false });
 
 document.addEventListener('touchmove', (e) => {
     if (e.touches.length === 2 && initialPinchDistance !== null) {
+        e.preventDefault();
         const currentDistance = getPinchDistance(e);
         const delta = initialPinchDistance - currentDistance;
-        camera.position.z += delta * 0.01;
+        const zoomFactor = window.innerWidth < 768 ? 0.005 : 0.01;
+        camera.position.z += delta * zoomFactor;
         camera.position.z = Math.max(5, Math.min(20, camera.position.z));
         initialPinchDistance = currentDistance;
     }
@@ -188,7 +202,6 @@ document.addEventListener('touchend', () => {
     initialPinchDistance = null;
 });
 
-// Función auxiliar para calcular la distancia del pinch
 function getPinchDistance(e) {
     return Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
@@ -197,7 +210,8 @@ function getPinchDistance(e) {
 }
 
 document.addEventListener('wheel', (e) => {
-    camera.position.z += e.deltaY * 0.01;
+    const zoomFactor = window.innerWidth < 768 ? 0.005 : 0.01;
+    camera.position.z += e.deltaY * zoomFactor;
     camera.position.z = Math.max(5, Math.min(20, camera.position.z));
 });
 
@@ -205,15 +219,16 @@ document.addEventListener('wheel', (e) => {
 document.addEventListener('dblclick', () => {
     targetRotationX = 0;
     targetRotationY = 0;
-    camera.position.z = 12;
+    camera.position.z = window.innerWidth < 768 ? 15 : 12;
 });
 
 // Función de animación
 function animate() {
     requestAnimationFrame(animate);
 
-    currentRotationX += (targetRotationX - currentRotationX) * 0.05;
-    currentRotationY += (targetRotationY - currentRotationY) * 0.05;
+    const dampingFactor = window.innerWidth < 768 ? 0.08 : 0.05;
+    currentRotationX += (targetRotationX - currentRotationX) * dampingFactor;
+    currentRotationY += (targetRotationY - currentRotationY) * dampingFactor;
 
     scene.rotation.x = currentRotationX;
     scene.rotation.y = currentRotationY;
@@ -225,7 +240,6 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// Iniciar animación
 animate();
 
 // Manejar redimensionamiento de ventana
@@ -233,4 +247,6 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    camera.position.z = window.innerWidth < 768 ? 15 : 12;
 });
