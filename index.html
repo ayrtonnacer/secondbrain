@@ -3,42 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#333333">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <title>Second Brain</title>
-
     <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
-    
     <!-- Estilos -->
     <link rel="stylesheet" href="css/styles.css">
-
-    <!-- SEO básico -->
-    <meta name="description" content="Explora una colección interactiva de recursos y conocimientos en 3D">
-    
-    <!-- Open Graph / Social Media -->
-    <meta property="og:title" content="🧠 Second Brain">
-    <meta property="og:type" content="website">
-    <meta property="og:description" content="Explora una colección interactiva de recursos y conocimientos en 3D">
-    
-    <!-- Prevención de cache para desarrollo -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 </head>
 <body>
-    <div id="info">🧠 Second Brain</div>
+    <div id="info">Second Brain</div>
 
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/main.js"></script>
-
-    <!-- Prevención de zoom en móviles -->
-    <script>
-        document.addEventListener('touchmove', function(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-    </script>
 </body>
 </html>

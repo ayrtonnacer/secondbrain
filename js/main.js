@@ -14,10 +14,19 @@ const images = [
     }
 ];
 
-// Variables para control táctil
+// Variables para control táctil y mouse
 let touchStartX = 0;
 let touchStartY = 0;
 let isTouching = false;
+let mouseDown = false;
+let mouseX = 0;
+let mouseY = 0;
+let targetRotationX = 0;
+let targetRotationY = 0;
+let currentRotationX = 0;
+let currentRotationY = 0;
+let isDragging = false;
+let initialPinchDistance = null;
 
 // Configuración básica de Three.js
 const scene = new THREE.Scene();
@@ -25,16 +34,15 @@ scene.background = new THREE.Color('#e9e9e9');
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio); // Mejora la nitidez en dispositivos móviles
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
 // Variables para el Raycaster
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-// Función para generar posiciones aleatorias
+// Funciones de utilidad
 function getRandomPosition() {
-    // Ajustar spread según el tamaño de la pantalla
     const spread = window.innerWidth < 768 ? 6 : 8;
     return {
         x: (Math.random() - 0.5) * spread,
@@ -43,11 +51,23 @@ function getRandomPosition() {
     };
 }
 
+function getSensitivityFactor() {
+    return window.innerWidth < 768 ? 0.008 : 0.01;
+}
+
+function getZoomFactor() {
+    return window.innerWidth < 768 ? 0.02 : 0.01;
+}
+
+function getDragThreshold() {
+    return window.innerWidth < 768 ? 5 : 2;
+}
+
 // Crear planos con imágenes
 const planes = images.map((image) => {
     const geometry = new THREE.PlaneGeometry(2, 2);
     const texture = new THREE.TextureLoader().load(image.url);
-    texture.minFilter = THREE.LinearFilter; // Mejora la calidad en móviles
+    texture.minFilter = THREE.LinearFilter;
     const material = new THREE.MeshBasicMaterial({ 
         map: texture,
         side: THREE.DoubleSide,
@@ -66,21 +86,6 @@ const planes = images.map((image) => {
 // Posicionar cámara
 camera.position.z = window.innerWidth < 768 ? 15 : 12;
 
-// Variables para el control
-let mouseDown = false;
-let mouseX = 0;
-let mouseY = 0;
-let targetRotationX = 0;
-let targetRotationY = 0;
-let currentRotationX = 0;
-let currentRotationY = 0;
-let isDragging = false;
-
-// Factor de sensibilidad según el dispositivo
-const getSensitivityFactor = () => {
-    return window.innerWidth < 768 ? 0.005 : 0.01;
-};
-
 // Eventos del mouse
 document.addEventListener('mousedown', (e) => {
     mouseDown = true;
@@ -94,13 +99,12 @@ document.addEventListener('mousemove', (e) => {
         const deltaX = e.clientX - mouseX;
         const deltaY = e.clientY - mouseY;
         
-        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+        if (Math.abs(deltaX) > getDragThreshold() || Math.abs(deltaY) > getDragThreshold()) {
             isDragging = true;
         }
         
-        const sensitivityFactor = getSensitivityFactor();
-        targetRotationY += deltaX * sensitivityFactor;
-        targetRotationX += deltaY * sensitivityFactor;
+        targetRotationY += deltaX * getSensitivityFactor();
+        targetRotationX += deltaY * getSensitivityFactor();
         
         mouseX = e.clientX;
         mouseY = e.clientY;
@@ -111,56 +115,61 @@ document.addEventListener('mouseup', () => {
     mouseDown = false;
 });
 
-// Eventos táctiles
+// Eventos táctiles mejorados
 document.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    isTouching = true;
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    isDragging = false;
+    if (e.touches.length === 1) {
+        e.preventDefault();
+        isTouching = true;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isDragging = false;
+    } else if (e.touches.length === 2) {
+        e.preventDefault();
+        initialPinchDistance = getPinchDistance(e);
+    }
 }, { passive: false });
 
 document.addEventListener('touchmove', (e) => {
-    if (!isTouching) return;
     e.preventDefault();
-
-    const touchX = e.touches[0].clientX;
-    const touchY = e.touches[0].clientY;
     
-    const deltaX = touchX - touchStartX;
-    const deltaY = touchY - touchStartY;
+    if (e.touches.length === 1 && isTouching) {
+        const touchX = e.touches[0].clientX;
+        const touchY = e.touches[0].clientY;
+        
+        const deltaX = touchX - touchStartX;
+        const deltaY = touchY - touchStartY;
 
-    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
-        isDragging = true;
+        if (Math.abs(deltaX) > getDragThreshold() || Math.abs(deltaY) > getDragThreshold()) {
+            isDragging = true;
+        }
+
+        targetRotationY += deltaX * getSensitivityFactor();
+        targetRotationX += deltaY * getSensitivityFactor();
+
+        touchStartX = touchX;
+        touchStartY = touchY;
+    } else if (e.touches.length === 2 && initialPinchDistance !== null) {
+        const currentDistance = getPinchDistance(e);
+        const delta = initialPinchDistance - currentDistance;
+        camera.position.z += delta * getZoomFactor();
+        camera.position.z = Math.max(5, Math.min(20, camera.position.z));
+        initialPinchDistance = currentDistance;
     }
-
-    const sensitivityFactor = getSensitivityFactor();
-    targetRotationY += deltaX * sensitivityFactor;
-    targetRotationX += deltaY * sensitivityFactor;
-
-    touchStartX = touchX;
-    touchStartY = touchY;
 }, { passive: false });
 
 document.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    isTouching = false;
-}, { passive: false });
-
-// Función para manejar clics y toques
-function onDocumentMouseClick(event) {
-    if (isDragging) {
-        isDragging = false;
-        return;
+    if (!isDragging && e.changedTouches.length === 1) {
+        const touch = e.changedTouches[0];
+        handleClick(touch.clientX, touch.clientY);
     }
+    isTouching = false;
+    initialPinchDistance = null;
+});
 
-    event.preventDefault();
-    
-    const x = event.clientX || (event.touches && event.touches[0].clientX);
-    const y = event.clientY || (event.touches && event.touches[0].clientY);
-    
+// Función mejorada para manejar clics
+function handleClick(x, y) {
     mouse.x = (x / window.innerWidth) * 2 - 1;
-    mouse.y = - (y / window.innerHeight) * 2 + 1;
+    mouse.y = -(y / window.innerHeight) * 2 + 1;
     
     raycaster.setFromCamera(mouse, camera);
     const intersects = raycaster.intersectObjects(planes);
@@ -173,33 +182,10 @@ function onDocumentMouseClick(event) {
     }
 }
 
-document.addEventListener('click', onDocumentMouseClick);
-document.addEventListener('touchend', onDocumentMouseClick);
-
-// Zoom con la rueda del mouse y gestos pinch
-let initialPinchDistance = null;
-
-document.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 2) {
-        e.preventDefault();
-        initialPinchDistance = getPinchDistance(e);
+document.addEventListener('click', (event) => {
+    if (!isDragging) {
+        handleClick(event.clientX, event.clientY);
     }
-}, { passive: false });
-
-document.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2 && initialPinchDistance !== null) {
-        e.preventDefault();
-        const currentDistance = getPinchDistance(e);
-        const delta = initialPinchDistance - currentDistance;
-        const zoomFactor = window.innerWidth < 768 ? 0.005 : 0.01;
-        camera.position.z += delta * zoomFactor;
-        camera.position.z = Math.max(5, Math.min(20, camera.position.z));
-        initialPinchDistance = currentDistance;
-    }
-}, { passive: false });
-
-document.addEventListener('touchend', () => {
-    initialPinchDistance = null;
 });
 
 function getPinchDistance(e) {
@@ -209,13 +195,14 @@ function getPinchDistance(e) {
     );
 }
 
+// Zoom con la rueda del mouse
 document.addEventListener('wheel', (e) => {
-    const zoomFactor = window.innerWidth < 768 ? 0.005 : 0.01;
-    camera.position.z += e.deltaY * zoomFactor;
+    e.preventDefault();
+    camera.position.z += e.deltaY * getZoomFactor();
     camera.position.z = Math.max(5, Math.min(20, camera.position.z));
-});
+}, { passive: false });
 
-// Reset con doble click y doble toque
+// Reset con doble click/toque
 document.addEventListener('dblclick', () => {
     targetRotationX = 0;
     targetRotationY = 0;
@@ -226,13 +213,17 @@ document.addEventListener('dblclick', () => {
 function animate() {
     requestAnimationFrame(animate);
 
+    // Factor de suavizado adaptativo
     const dampingFactor = window.innerWidth < 768 ? 0.08 : 0.05;
+    
+    // Actualizar rotaciones con suavizado
     currentRotationX += (targetRotationX - currentRotationX) * dampingFactor;
     currentRotationY += (targetRotationY - currentRotationY) * dampingFactor;
 
     scene.rotation.x = currentRotationX;
     scene.rotation.y = currentRotationY;
 
+    // Mantener las imágenes mirando a la cámara
     planes.forEach(plane => {
         plane.quaternion.copy(camera.quaternion);
     });
@@ -240,13 +231,35 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// Iniciar animación
 animate();
 
 // Manejar redimensionamiento de ventana
 window.addEventListener('resize', () => {
+    // Actualizar cámara
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    
+    // Actualizar renderer
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    
+    // Ajustar posición de cámara según dispositivo
     camera.position.z = window.innerWidth < 768 ? 15 : 12;
 });
+
+// Prevenir comportamientos por defecto en móviles
+document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 1) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+// Optimización para dispositivos móviles
+if ('ontouchstart' in window) {
+    document.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+}
