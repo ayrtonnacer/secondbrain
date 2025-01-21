@@ -5,7 +5,7 @@ const images = [
         link: 'https://open.spotify.com/intl-es/track/5xvPXPOUITOU26irSi3XD5?si=20fb8b8e1fff4038'
     },
     { 
-        url: 'images/basquiat.jpg', 
+        url: 'images/vygotsky.jpg', 
         link: 'https://artsandculture.google.com/story/qgXBfAEiMpFJzA'
     },
     { 
