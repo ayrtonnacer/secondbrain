@@ -1,19 +1,141 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Second Brain</title>
-    <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧠</text></svg>">
-    <!-- Estilos -->
-    <link rel="stylesheet" href="css/styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Second Brain</title>
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div id="info">Second Brain</div>
 
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="js/main.js"></script>
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <div id="toolbar-left">
+      <span id="app-title">⬡ Second Brain</span>
+    </div>
+    <div id="toolbar-center">
+      <button class="view-btn active" data-view="3d" title="Grafo 3D">3D</button>
+      <button class="view-btn" data-view="2d" title="Grafo 2D">2D</button>
+      <button class="view-btn" data-view="table" title="Tabla">≡</button>
+    </div>
+    <div id="toolbar-right">
+      <input type="text" id="search-input" placeholder="Buscar notas...">
+      <button id="add-btn" title="Nueva nota">+</button>
+    </div>
+  </div>
+
+  <!-- VISTA 3D -->
+  <div id="view-3d" class="view active"></div>
+
+  <!-- VISTA 2D -->
+  <div id="view-2d" class="view">
+    <svg id="graph-svg"></svg>
+  </div>
+
+  <!-- VISTA TABLA -->
+  <div id="view-table" class="view">
+    <div id="table-container">
+      <div id="table-filters">
+        <span class="filter-label">Filtrar por tag:</span>
+        <div id="tag-filters"></div>
+      </div>
+      <table id="notes-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Titulo</th>
+            <th>Descripcion</th>
+            <th>Tags</th>
+            <th>Conexiones</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVA/EDITAR NOTA -->
+  <div id="modal-note" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="modal-note-title">Nueva Nota</h2>
+        <button class="modal-close" data-modal="modal-note">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="image-upload-area">
+          <div id="image-preview-container">
+            <img id="image-preview" src="" alt="" class="hidden">
+            <div id="upload-placeholder">
+              <span>📷</span>
+              <p>Click o arrastra una imagen</p>
+            </div>
+          </div>
+          <input type="file" id="image-input" accept="image/*" class="hidden">
+        </div>
+        <div class="form-group">
+          <label>Titulo</label>
+          <input type="text" id="note-title-input" placeholder="Titulo de la nota...">
+        </div>
+        <div class="form-group">
+          <label>Descripcion</label>
+          <textarea id="note-desc-input" placeholder="Escribe tus ideas, links, referencias..." rows="4"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Link (opcional)</label>
+          <input type="url" id="note-link-input" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label>Tags (separados por coma)</label>
+          <input type="text" id="note-tags-input" placeholder="psicologia, educacion, libro...">
+        </div>
+        <div class="form-group">
+          <label>Conectar con</label>
+          <div id="connections-selector"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="delete-note-btn" class="btn-danger hidden">Eliminar</button>
+        <button id="save-note-btn" class="btn-primary">Guardar nota</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: VER NOTA -->
+  <div id="modal-view" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box modal-view-box">
+      <button class="modal-close" data-modal="modal-view">×</button>
+      <div class="view-card">
+        <div class="view-card-image-wrap">
+          <img id="view-card-img" src="" alt="">
+        </div>
+        <div class="view-card-content">
+          <h2 id="view-card-title"></h2>
+          <p id="view-card-desc"></p>
+          <div id="view-card-tags"></div>
+          <div id="view-card-connections">
+            <h4>Conectado con</h4>
+            <div id="view-card-conn-list"></div>
+          </div>
+          <div class="view-card-actions">
+            <a id="view-card-link" href="#" target="_blank" class="btn-link hidden">Abrir link ↗</a>
+            <button id="view-card-edit" class="btn-secondary">Editar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="js/notes.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/graph3d.js"></script>
+  <script src="js/graph2d.js"></script>
+  <script src="js/tableview.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
