@@ -1,5 +1,5 @@
 // ========================================
-// GRAPH3D.JS - Vista 3D con Three.js + Mobile
+// GRAPH3D.JS - Vista 3D con Three.js + Mobile FIXED
 // ========================================
 
 const Graph3DManager = (() => {
@@ -12,11 +12,11 @@ const Graph3DManager = (() => {
   let touchStartX = 0, touchStartY = 0;
   let isTouching = false;
   let initialPinchDistance = null;
+  let lastTapTime = 0;
 
   function init() {
     const container = document.getElementById('view-3d');
     
-    // Setup Three.js
     scene = new THREE.Scene();
     scene.background = new THREE.Color('#e9e9e9');
     
@@ -46,7 +46,6 @@ const Graph3DManager = (() => {
     const notes = NotesManager.getAll();
     const { nodes, links } = NotesManager.getConnectionGraph();
     
-    // Crear planos con imagenes
     notes.forEach((note, index) => {
       const geometry = new THREE.PlaneGeometry(2, 2);
       
@@ -77,7 +76,6 @@ const Graph3DManager = (() => {
       planes.push(plane);
     });
     
-    // Crear lineas de conexion
     links.forEach(link => {
       const sourcePlane = planes.find(p => p.userData.noteId === link.source);
       const targetPlane = planes.find(p => p.userData.noteId === link.target);
@@ -160,15 +158,17 @@ const Graph3DManager = (() => {
       mouseDown = false;
     });
     
-    // Click para abrir nota
     canvas.addEventListener('click', (e) => {
       if (isDragging) return;
       handleClick(e.clientX, e.clientY);
     });
     
-    // TOUCH EVENTS PARA MOVIL
+    canvas.addEventListener('dblclick', resetView);
+    
+    // TOUCH EVENTS
     canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
+      
       if (e.touches.length === 1) {
         isTouching = true;
         touchStartX = e.touches[0].clientX;
@@ -176,6 +176,7 @@ const Graph3DManager = (() => {
         isDragging = false;
       } else if (e.touches.length === 2) {
         initialPinchDistance = getPinchDistance(e);
+        isTouching = false;
       }
     }, { passive: false });
     
@@ -198,7 +199,6 @@ const Graph3DManager = (() => {
         touchStartX = touchX;
         touchStartY = touchY;
       } else if (e.touches.length === 2 && initialPinchDistance !== null) {
-        // Pinch to zoom
         const currentDistance = getPinchDistance(e);
         const delta = initialPinchDistance - currentDistance;
         camera.position.z += delta * getZoomSpeed();
@@ -207,34 +207,34 @@ const Graph3DManager = (() => {
       }
     }, { passive: false });
     
+    // CONSOLIDATED touchend - handles both tap and double tap
     canvas.addEventListener('touchend', (e) => {
-      if (!isDragging && e.changedTouches.length === 1) {
-        const touch = e.changedTouches[0];
-        handleClick(touch.clientX, touch.clientY);
+      const currentTime = Date.now();
+      const timeSinceLastTap = currentTime - lastTapTime;
+      
+      // Double tap detection
+      if (timeSinceLastTap < 300 && timeSinceLastTap > 0) {
+        resetView();
+        lastTapTime = 0;
+      } else {
+        // Single tap - open note if not dragging
+        if (!isDragging && e.changedTouches.length === 1) {
+          const touch = e.changedTouches[0];
+          handleClick(touch.clientX, touch.clientY);
+        }
+        lastTapTime = currentTime;
       }
+      
       isTouching = false;
       initialPinchDistance = null;
     });
     
-    // Zoom con scroll del mouse
+    // Zoom con scroll
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       camera.position.z += e.deltaY * getZoomSpeed();
       camera.position.z = Math.max(5, Math.min(20, camera.position.z));
     }, { passive: false });
-    
-    // Doble tap/click para reset
-    let lastTap = 0;
-    canvas.addEventListener('touchend', (e) => {
-      const currentTime = new Date().getTime();
-      const tapLength = currentTime - lastTap;
-      if (tapLength < 300 && tapLength > 0) {
-        resetView();
-      }
-      lastTap = currentTime;
-    });
-    
-    canvas.addEventListener('dblclick', resetView);
     
     // Resize
     window.addEventListener('resize', () => {
@@ -275,7 +275,6 @@ const Graph3DManager = (() => {
   function animate() {
     requestAnimationFrame(animate);
     
-    // Smooth rotation
     const dampingFactor = window.innerWidth < 768 ? 0.08 : 0.05;
     currentRotationX += (targetRotationX - currentRotationX) * dampingFactor;
     currentRotationY += (targetRotationY - currentRotationY) * dampingFactor;
@@ -283,7 +282,6 @@ const Graph3DManager = (() => {
     scene.rotation.x = currentRotationX;
     scene.rotation.y = currentRotationY;
     
-    // Mantener imagenes mirando a la camara
     planes.forEach(plane => {
       plane.quaternion.copy(camera.quaternion);
     });
