@@ -1,5 +1,5 @@
 // ========================================
-// GRAPH3D.JS - Vista 3D con Three.js
+// GRAPH3D.JS - Vista 3D con Three.js + Mobile
 // ========================================
 
 const Graph3DManager = (() => {
@@ -9,6 +9,9 @@ const Graph3DManager = (() => {
   let targetRotationX = 0, targetRotationY = 0;
   let currentRotationX = 0, currentRotationY = 0;
   let raycaster, mouse;
+  let touchStartX = 0, touchStartY = 0;
+  let isTouching = false;
+  let initialPinchDistance = null;
 
   function init() {
     const container = document.getElementById('view-3d');
@@ -23,7 +26,7 @@ const Graph3DManager = (() => {
       0.1, 
       1000
     );
-    camera.position.z = 12;
+    camera.position.z = window.innerWidth < 768 ? 15 : 12;
     
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight - 60);
@@ -105,7 +108,7 @@ const Graph3DManager = (() => {
   }
 
   function getRandomPosition() {
-    const spread = 8;
+    const spread = window.innerWidth < 768 ? 6 : 8;
     return {
       x: (Math.random() - 0.5) * spread,
       y: (Math.random() - 0.5) * spread,
@@ -113,10 +116,18 @@ const Graph3DManager = (() => {
     };
   }
 
+  function getSensitivity() {
+    return window.innerWidth < 768 ? 0.008 : 0.01;
+  }
+
+  function getZoomSpeed() {
+    return window.innerWidth < 768 ? 0.02 : 0.01;
+  }
+
   function setupEvents() {
     const canvas = renderer.domElement;
     
-    // Mouse events
+    // MOUSE EVENTS
     canvas.addEventListener('mousedown', (e) => {
       mouseDown = true;
       mouseX = e.clientX;
@@ -133,8 +144,8 @@ const Graph3DManager = (() => {
           isDragging = true;
         }
         
-        targetRotationY += deltaX * 0.01;
-        targetRotationX += deltaY * 0.01;
+        targetRotationY += deltaX * getSensitivity();
+        targetRotationX += deltaY * getSensitivity();
         
         mouseX = e.clientX;
         mouseY = e.clientY;
@@ -145,43 +156,127 @@ const Graph3DManager = (() => {
       mouseDown = false;
     });
     
+    canvas.addEventListener('mouseleave', () => {
+      mouseDown = false;
+    });
+    
     // Click para abrir nota
     canvas.addEventListener('click', (e) => {
       if (isDragging) return;
-      
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(planes);
-      
-      if (intersects.length > 0) {
-        const noteId = intersects[0].object.userData.noteId;
-        UIManager.openViewModal(noteId);
-      }
+      handleClick(e.clientX, e.clientY);
     });
     
-    // Zoom con scroll
+    // TOUCH EVENTS PARA MOVIL
+    canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        isTouching = true;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isDragging = false;
+      } else if (e.touches.length === 2) {
+        initialPinchDistance = getPinchDistance(e);
+      }
+    }, { passive: false });
+    
+    canvas.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      
+      if (e.touches.length === 1 && isTouching) {
+        const touchX = e.touches[0].clientX;
+        const touchY = e.touches[0].clientY;
+        const deltaX = touchX - touchStartX;
+        const deltaY = touchY - touchStartY;
+        
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+          isDragging = true;
+        }
+        
+        targetRotationY += deltaX * getSensitivity();
+        targetRotationX += deltaY * getSensitivity();
+        
+        touchStartX = touchX;
+        touchStartY = touchY;
+      } else if (e.touches.length === 2 && initialPinchDistance !== null) {
+        // Pinch to zoom
+        const currentDistance = getPinchDistance(e);
+        const delta = initialPinchDistance - currentDistance;
+        camera.position.z += delta * getZoomSpeed();
+        camera.position.z = Math.max(5, Math.min(20, camera.position.z));
+        initialPinchDistance = currentDistance;
+      }
+    }, { passive: false });
+    
+    canvas.addEventListener('touchend', (e) => {
+      if (!isDragging && e.changedTouches.length === 1) {
+        const touch = e.changedTouches[0];
+        handleClick(touch.clientX, touch.clientY);
+      }
+      isTouching = false;
+      initialPinchDistance = null;
+    });
+    
+    // Zoom con scroll del mouse
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      camera.position.z += e.deltaY * 0.01;
+      camera.position.z += e.deltaY * getZoomSpeed();
       camera.position.z = Math.max(5, Math.min(20, camera.position.z));
     }, { passive: false });
+    
+    // Doble tap/click para reset
+    let lastTap = 0;
+    canvas.addEventListener('touchend', (e) => {
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTap;
+      if (tapLength < 300 && tapLength > 0) {
+        resetView();
+      }
+      lastTap = currentTime;
+    });
+    
+    canvas.addEventListener('dblclick', resetView);
     
     // Resize
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / (window.innerHeight - 60);
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight - 60);
+      camera.position.z = window.innerWidth < 768 ? 15 : 12;
     });
+  }
+
+  function handleClick(x, y) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((x - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((y - rect.top) / rect.height) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(planes);
+    
+    if (intersects.length > 0) {
+      const noteId = intersects[0].object.userData.noteId;
+      UIManager.openViewModal(noteId);
+    }
+  }
+
+  function getPinchDistance(e) {
+    return Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+
+  function resetView() {
+    targetRotationX = 0;
+    targetRotationY = 0;
+    camera.position.z = window.innerWidth < 768 ? 15 : 12;
   }
 
   function animate() {
     requestAnimationFrame(animate);
     
     // Smooth rotation
-    const dampingFactor = 0.05;
+    const dampingFactor = window.innerWidth < 768 ? 0.08 : 0.05;
     currentRotationX += (targetRotationX - currentRotationX) * dampingFactor;
     currentRotationY += (targetRotationY - currentRotationY) * dampingFactor;
     
